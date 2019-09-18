@@ -1,17 +1,21 @@
-#' Divide a set of items into counterbalanced samples.
+#' Divide a set of items with two categorical variables into balanced samples.
 #'
 #' Items are lines of a data frame. Items have two properties: feat1 and feat2 (columns of the data frame).
-#' The set of items is the cartesian product of feat1 and feat2.
-#' The constraints on the sample are:
-#' - Each item belongs to one and only one sample. The number of samples is then (nbr of items / sample size).
-#' - Each sample contains only one representant of feat1.
-#'   Then, the number of different feat1 cannot be lower than the number of sample,
-#'   and the number of feat2 cannot be greater than the number of sample.
-#' - No more than 2 consecutive identical feat2 modalities in a sample.
+#' The number of items is the cartesian product of the number of modalities of feat1 and feat2.
+#'
+#' The samples have the following properties:
+#'
+#' (1.) The item are exhaustively and without replacement divided into samples.
+#' (2.) The modalities of feat1 and feat2 are equaly represented in each sample.
+#' (3.) No more than 2 consecutive identical modalities in a sample.
+#'
+#' The properties 1 implies that the number of items is a multiple of the number of sample.
+#' The properties 2 implies that the number of item of each modality in feat1 and feat2 is a mutiple of the number of sample.
+#'
 #' @param data a data frame, each line is an item.
 #' @param feat1 the name of the column containing the feature 1 in the data frame.
 #' @param feat2 the name of the column containing the feature 2 in the data frame.
-#' @param sample.size size of the samples requested. The sample.size must be a multiple of the item number.
+#' @param sample.nb number of samples requested.
 #'
 #' @return A list of data frame.
 #' @export
@@ -19,21 +23,12 @@
 #' @examples
 #' data(dataFif)
 #' samples <- double.condition.sampling(data=dataFif, "sent", "condition", 20)
-counterbalanced.sampling <-
-  function (data, feat1, feat2, sample.size) {
+counterbalanced.sampling <- function (data, feat1, feat2, sample.nb) {
 
     feat1.nb <- length(unique(data[[feat1]]))
     feat2.nb <- length(unique(data[[feat2]]))
     items.nb <- feat1.nb * feat2.nb
-    sample.nb <- items.nb / sample.size
-
-    # Checking argument validity
-    if ((items.nb %% sample.size) != 0)
-      stop("The size of requested sample files is not a multiple of the number of items")
-    if (feat1.nb < sample.size)
-      stop("The sample size is too big, sentences cannot be unique in each sample.")
-    if (feat2.nb > sample.nb)
-      stop("The sampe size is too small, sentences cannot be unique in each sample.")
+    sample.size <- items.nb / sample.nb
 
     # Assign each item to a sample with a balanced number of feat1 and feat2 in each sample
     samples.index <- counterbalanced.sample.index.matrix(feat1.nb, feat2.nb, sample.nb);
@@ -86,8 +81,18 @@ is.value.repeated <- function(string, value.nb) {
 #'
 #' @examples
 counterbalanced.sample.index.matrix <- function(feat1.nb, feat2.nb, sample.nb) {
-    feat2nb.by.sample <- feat1.nb / sample.nb;
-    sample.size <- (feat1.nb * feat2.nb) / sample.nb;
+
+  items.nb <- feat1.nb * feat2.nb
+  sample.size <- items.nb / sample.nb;
+
+  # Checking argument validity
+  if ((items.nb %% sample.size) != 0)
+    stop("The size of requested sample files is not a multiple of the number of items")
+  if ((sample.size %% feat1.nb) != 0)
+    stop("The sample size is not a multiple of the number of modality in feat1. The samples cannot be balanced.")
+  if ((sample.size %% feat2.nb) != 0)
+    stop("The sample size is not a multiple of the number of modality in feat2. The samples cannot be balanced.")
+
     square <- FALSE
     while (square[1]==FALSE) {
       square <- fill.counterbalanced.sample.index.matrix(feat1.nb, feat2.nb, sample.nb)
@@ -106,14 +111,22 @@ counterbalanced.sample.index.matrix <- function(feat1.nb, feat2.nb, sample.nb) {
 #'
 #' @examples
 fill.counterbalanced.sample.index.matrix <- function(feat1.nb, feat2.nb, sample.nb) {
+  items.nb <- feat1.nb * feat2.nb
+  sample.size <- items.nb / sample.nb;
   square <- matrix(0, nrow=feat1.nb, ncol=feat2.nb);
-  for (column in sample(1:feat2.nb, feat2.nb)) {
+  for (column in 1:feat2.nb) {
     for (row in 1:feat1.nb) {
       if (square[row,column] == 0 ) {
-        available.in.row <- (1:sample.nb)[! 1:sample.nb %in% square[row,]]
-        not.available.in.column <- table(square[,column]) == (feat1.nb / sample.nb)
+
+        not.available.in.row <- table(square[row,]) == (sample.size / feat1.nb)
+        not.available.in.row <- as.numeric(names(not.available.in.row) [not.available.in.row])
+        available.in.row <- setdiff(1:sample.nb, not.available.in.row)
+        # available.in.row <- (1:sample.nb)[! 1:sample.nb %in% square[row,]]
+
+        not.available.in.column <- table(square[,column]) == (sample.size / feat2.nb)
         not.available.in.column <- as.numeric(names(not.available.in.column) [not.available.in.column])
         available.in.column <- setdiff(1:sample.nb, not.available.in.column)
+
         possible.values <- intersect(available.in.row, available.in.column)
         if (length(possible.values) == 0) {
           return(FALSE)
