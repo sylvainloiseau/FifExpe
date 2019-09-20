@@ -1,4 +1,4 @@
-#' Divide a set of items with two categorical variables into balanced samples.
+#' Divide a set of items with two categorical variables into cross-balanced samples.
 #'
 #' Items are lines of a data frame. Items have two properties: feat1 and feat2 (columns of the data frame).
 #' The number of items is the cartesian product of the number of modalities of feat1 and feat2.
@@ -22,7 +22,7 @@
 #'
 #' @examples
 #' data(dataFif)
-#' samples <- double.condition.sampling(data=dataFif, "sent", "condition", 20)
+#' samples <- counterbalanced.sampling(data=dataFif, "sent", "condition", 20)
 counterbalanced.sampling <- function (data, feat1, feat2, sample.nb) {
 
     feat1.nb <- length(unique(data[[feat1]]))
@@ -47,11 +47,11 @@ counterbalanced.sampling <- function (data, feat1, feat2, sample.nb) {
         function(x) x[sample(nrow(x), nrow(x)),]
       )
 
-      # Test if the sampling violate the condition more.than.two.identical.consecutive.feat1
+      # Test if the sampling violates the condition more.than.two.identical.consecutive.feat1
       string <- paste(unlist(lapply(samples, function(x) x[feat1]), use.names = F), collapse = "");
       more.than.two.identical.consecutive.feat1 <- is.value.repeated(string, feat1.nb)
 
-      # Test if the sampling violate the condition more.than.two.identical.consecutive.feat2
+      # Test if the sampling violates the condition more.than.two.identical.consecutive.feat2
       string <- paste(unlist(lapply(samples, function(x) x[feat2]), use.names = F), collapse = "");
       more.than.two.identical.consecutive.feat2 <- is.value.repeated(string, feat2.nb)
     }
