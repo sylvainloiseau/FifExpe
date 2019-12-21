@@ -2,7 +2,12 @@ Package: FifExpe
 Type: Package
 Title: Fif psycholinguistic experiment utilities
 Version: 0.1.0
-Author: Sylvain Loiseau
+Authors@R: 
+    person(given = "Sylvain",
+           family = "Loiseau",
+           role = c("aut", "cre"),
+           email = "sylvain.loiseau@univ-paris13.fr",
+           comment = c(ORCID = "https://orcid.org/0000-0001-5249-9550"))
 Maintainer: Sylvain Loiseau <sylvain.loiseau@univ-paris13.fr>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
@@ -10,3 +15,5 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.1.1
+Suggests: 
+    testthat (>= 2.1.0)
