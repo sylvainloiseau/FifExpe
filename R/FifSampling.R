@@ -1,7 +1,7 @@
 #' Divide a set of items with two categorical variables into cross-balanced samples.
 #'
 #' Items are lines of a data frame. Items have two properties: feat1 and feat2 (columns of the data frame).
-#' The number of items is the cartesian product of the number of modalities of feat1 and feat2.
+#' The number of items is the product of the number of modalities of feat1 and feat2.
 #'
 #' The samples have the following properties:
 #'
@@ -24,6 +24,8 @@
 #' data(dataFif)
 #' samples <- counterbalanced.sampling(data=dataFif, "sent", "condition", 20)
 counterbalanced.sampling <- function (data, feat1, feat2, sample.nb) {
+    if(! feat1 %in% colnames(data)) stop(paste("Unknown column name:", feat1));
+    if(! feat2 %in% colnames(data)) stop(paste("Unknown column name:", feat2));
 
     feat1.nb <- length(unique(data[[feat1]]))
     feat2.nb <- length(unique(data[[feat2]]))
@@ -34,27 +36,29 @@ counterbalanced.sampling <- function (data, feat1, feat2, sample.nb) {
     samples.index <- counterbalanced.sample.index.matrix(feat1.nb, feat2.nb, sample.nb);
 
     samples <- split(data, as.vector(t(samples.index)));
+    samples <- lapply(samples, function(x) { permute.without.repetition(x, feat1, NULL)}); # feat2
+    #samples <- lapply(samples, nrow);
 
-    more.than.two.identical.consecutive.feat1 <- TRUE
-    more.than.two.identical.consecutive.feat2 <- TRUE
-
-    # While the sampling violate the condition, redo
-    while (more.than.two.identical.consecutive.feat2 | more.than.two.identical.consecutive.feat1) {
-
-      # shuffle the order of items in each
-      samples <- lapply(
-        samples,
-        function(x) x[sample(nrow(x), nrow(x)),]
-      )
-
-      # Test if the sampling violates the condition more.than.two.identical.consecutive.feat1
-      string <- paste(unlist(lapply(samples, function(x) x[feat1]), use.names = F), collapse = "");
-      more.than.two.identical.consecutive.feat1 <- is.value.repeated(string, feat1.nb)
-
-      # Test if the sampling violates the condition more.than.two.identical.consecutive.feat2
-      string <- paste(unlist(lapply(samples, function(x) x[feat2]), use.names = F), collapse = "");
-      more.than.two.identical.consecutive.feat2 <- is.value.repeated(string, feat2.nb)
-    }
+    # #return(samples)
+    # more.than.two.identical.consecutive.feat1 <- TRUE
+    # more.than.two.identical.consecutive.feat2 <- TRUE
+    #
+    # # While the sampling violate the condition, redo
+    # while (more.than.two.identical.consecutive.feat2 | more.than.two.identical.consecutive.feat1) {
+    #   # shuffle the order of items in each
+    #   samples <- lapply(
+    #     samples,
+    #     function(x) x[sample(nrow(x), nrow(x)),]
+    #   )
+    #
+    #   # Test if the sampling violates the condition more.than.two.identical.consecutive.feat1
+    #   string.feat1 <- paste(unlist(lapply(samples, function(x) x[feat1]), use.names = F), collapse = "");
+    #   more.than.two.identical.consecutive.feat1 <- is.value.repeated(string.feat1, feat1.nb)
+    #
+    #   # Test if the sampling violates the condition more.than.two.identical.consecutive.feat2
+    #   string.feat2 <- paste(unlist(lapply(samples, function(x) x[feat2]), use.names = F), collapse = "");
+    #   more.than.two.identical.consecutive.feat2 <- is.value.repeated(string.feat2, feat2.nb)
+    # }
     return(samples)
   }
 
@@ -69,6 +73,50 @@ is.value.repeated <- function(string, value.nb) {
   }
   return(FALSE)
 }
+
+permute.without.repetition <- function(sample.df, feat1.col, feat2.col=NULL) {
+   sample.size <- nrow(sample.df)
+   feat1 <- sample.df[, feat1.col]
+   feat1.nb <- length(unique(feat1))
+   #if (feat1.nb * 2 < sample.size) stop(paste("Not enough different value in", feat1.col, "in order to avoid repetition."));
+
+    if (!is.null(feat2.col)) {
+      feat2 <- sample.df[, feat2.col]
+      feat2.nb <- length(unique(feat2))
+      #if (feat2.nb * 2 < sample.size) stop(paste("Not enough different value in", feat2.col, "in order to avoid repetition."));
+    }
+   index.ordered.wo.repetition <- c();
+   remaining <- 1:sample.size
+   first.i <- sample(remaining, 1)
+   index.ordered.wo.repetition[1] <- first.i;
+   remaining <- remaining[-first.i];
+   for (i in 2:sample.size) {
+     previous.i <- index.ordered.wo.repetition[i-1];
+     previous.feat1 <- sample.df[previous.i, feat1.col];
+     # print("-------")
+     # print(previous.i)
+     # print(feat1)
+     # if (!is.null(feat2.col)) print(feat2)
+     # print(previous.feat1);
+     # if (!is.null(feat2.col)) print(previous.feat2);
+     # print(feat1 != previous.feat1)
+     # print(remaining);
+     possible <- intersect(which(feat1 != previous.feat1), remaining);
+     # print(possible);
+     if (!is.null(feat2.col)) {
+       previous.feat2 <- sample.df[previous.i, feat2.col];
+       possible <- intersect(possible, which(feat2 != previous.feat2))
+     }
+     if(length(possible) == 0) {
+       stop("No more logical possibility")
+     }
+     found <- sample(possible, 1)
+     index.ordered.wo.repetition[i] <- found
+     remaining <- remaining[-found];
+   }
+   return(sample.df[index.ordered.wo.repetition,])
+}
+
 
 #' Create a matrix of sample index without repetition of the index in a given row,
 #' and with a balanced repetition of index in a given column.
@@ -87,7 +135,7 @@ counterbalanced.sample.index.matrix <- function(feat1.nb, feat2.nb, sample.nb) {
 
   # Checking argument validity
   if ((items.nb %% sample.size) != 0)
-    stop("The size of requested sample files is not a multiple of the number of items")
+    stop("The size of the requested samples is not a multiple of the number of items")
   if ((sample.size %% feat1.nb) != 0)
     stop("The sample size is not a multiple of the number of modality in feat1. The samples cannot be balanced.")
   if ((sample.size %% feat2.nb) != 0)
