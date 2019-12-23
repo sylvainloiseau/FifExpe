@@ -44,10 +44,13 @@ counterbalanced.sampling <- function (data, feat1, feat2, sample.nb, norepetitio
 
   # reorder in order to avoid repetition
   if (!is.null(norepetition)) {
-    ls <- lapply(ls, function(x) { order.without.repetition(x, norepetition)});
+    reordered <- lapply(ls, function(x) { order.without.repetition(x, norepetition)});
+    while (reordered[[1]][[1]][1] == FALSE) {
+      reordered <- lapply(ls, function(x) { order.without.repetition(x, norepetition)});
+    }
   }
-
-  return(ls)
+  cat("ok\n")
+  return(reordered)
 }
 
 order.without.repetition <- function(sample.df, cols) {
@@ -61,13 +64,23 @@ order.without.repetition <- function(sample.df, cols) {
      previous.i <- index.ordered.wo.repetition[i-1];
      possible <- remaining;
      for(col in cols) {
-       possible <- intersect(which(sample.df[, col] != sample.df[previous.i, col]), remaining);
+       possible <- intersect(which(sample.df[, col] != sample.df[previous.i, col]), possible);
      }
-     if(length(possible) == 0) stop("No more logical possibility.")
-     found <- sample(possible, 1)
+     if(length(possible) == 0) {
+       cat("No more reordering possibility. Re-sampling...\n")
+       return(list(data.frame(FALSE)));
+     }
+       #stop("No more logical possibility.")
+     found <- 0;
+     if (length(possible) == 1) {
+       found = possible;
+     } else {
+       found <- sample(possible, 1)
+     }
      index.ordered.wo.repetition[i] <- found
      remaining <- remaining[-which(remaining == found)];
    }
+   if (length(index.ordered.wo.repetition) != sample.size) stop("The ordering index does not fit the length of the data.")
    res <- sample.df[index.ordered.wo.repetition,]
    return(res)
 }
