@@ -1,120 +1,75 @@
 #' Divide a set of items with two categorical variables into cross-balanced samples.
 #'
-#' Items are lines of a data frame. Items have two properties: feat1 and feat2 (columns of the data frame).
-#' The number of items is the product of the number of modalities of feat1 and feat2.
+#' Items are lines of a data frame. Items have at least two categorial properties: prop1 and prop2 (columns of the data frame).
+#' The number of items is the product of the number of modalities of prop1 and prop2.
 #'
-#' The samples have the following properties:
+#' The sampling has the following properties:
 #'
-#' (1.) The item are exhaustively and without replacement divided into samples.
-#' (2.) The modalities of feat1 and feat2 are equaly represented in each sample.
-#' (3.) No more than 2 consecutive identical modalities in a sample.
+#' (1.) The items are exhaustively and without replacement divided into samples.
+#' (2.) The modalities of prop1 and prop2 are equally represented in each sample.
+#' (3.) Optionaly, no more than 2 consecutive identical modalities in a sample.
 #'
-#' The properties 1 implies that the number of items is a multiple of the number of sample.
-#' The properties 2 implies that the number of item of each modality in feat1 and feat2 is a mutiple of the number of sample.
 #'
 #' @param data a data frame, each line is an item.
-#' @param feat1 the name of the column containing the feature 1 in the data frame.
-#' @param feat2 the name of the column containing the feature 2 in the data frame.
+#' @param feat1 the name of the column containing the property 1 in the data frame.
+#' @param feat2 the name of the column containing the property 2 in the data frame.
 #' @param sample.nb number of samples requested.
-#'
+#' @param norepetition NULL or a vector containing either feat1, feat2, or both. Those modality will not be repeated in the sample.
 #' @return A list of data frame.
 #' @export
 #'
 #' @examples
 #' data(dataFif)
 #' samples <- counterbalanced.sampling(data=dataFif, "sent", "condition", 20)
-counterbalanced.sampling <- function (data, feat1, feat2, sample.nb) {
-    if(! feat1 %in% colnames(data)) stop(paste("Unknown column name:", feat1));
-    if(! feat2 %in% colnames(data)) stop(paste("Unknown column name:", feat2));
+counterbalanced.sampling <- function (data, feat1, feat2, sample.nb, norepetition=c(feat1, feat2)) {
+  if(! feat1 %in% colnames(data)) stop(paste("Unknown column name:", feat1));
+  if(! feat2 %in% colnames(data)) stop(paste("Unknown column name:", feat2));
 
-    feat1.nb <- length(unique(data[[feat1]]))
-    feat2.nb <- length(unique(data[[feat2]]))
-    items.nb <- feat1.nb * feat2.nb
-    sample.size <- items.nb / sample.nb
+  if (!is.null(norepetition) & !all(norepetition %in% c(feat1, feat2)))
+    stop("The properties in norepetition must be eater feat1 or feat2 or both");
 
-    # Assign each item to a sample with a balanced number of feat1 and feat2 in each sample
-    samples.index <- counterbalanced.sample.index.matrix(feat1.nb, feat2.nb, sample.nb);
+  feat1.nb <- length(unique(data[[feat1]]))
+  feat2.nb <- length(unique(data[[feat2]]))
+  items.nb <- feat1.nb * feat2.nb
+  sample.size <- items.nb / sample.nb
 
-    samples <- split(data, as.vector(t(samples.index)));
-    samples <- lapply(samples, function(x) { permute.without.repetition(x, feat1, NULL)}); # feat2
-    #samples <- lapply(samples, nrow);
+  # Assign each item to a sample with a balanced number of feat1 and feat2 in each sample
+  samples.index <- counterbalanced.sample.index.matrix(data, feat1, feat2, feat1.nb, feat2.nb, sample.nb);
 
-    # #return(samples)
-    # more.than.two.identical.consecutive.feat1 <- TRUE
-    # more.than.two.identical.consecutive.feat2 <- TRUE
-    #
-    # # While the sampling violate the condition, redo
-    # while (more.than.two.identical.consecutive.feat2 | more.than.two.identical.consecutive.feat1) {
-    #   # shuffle the order of items in each
-    #   samples <- lapply(
-    #     samples,
-    #     function(x) x[sample(nrow(x), nrow(x)),]
-    #   )
-    #
-    #   # Test if the sampling violates the condition more.than.two.identical.consecutive.feat1
-    #   string.feat1 <- paste(unlist(lapply(samples, function(x) x[feat1]), use.names = F), collapse = "");
-    #   more.than.two.identical.consecutive.feat1 <- is.value.repeated(string.feat1, feat1.nb)
-    #
-    #   # Test if the sampling violates the condition more.than.two.identical.consecutive.feat2
-    #   string.feat2 <- paste(unlist(lapply(samples, function(x) x[feat2]), use.names = F), collapse = "");
-    #   more.than.two.identical.consecutive.feat2 <- is.value.repeated(string.feat2, feat2.nb)
-    # }
-    return(samples)
+  ls <- vector(mode = "list", length=sample.nb)
+  for (i in 1:sample.nb) {
+    ls[[i]] <- data[samples.index[i,],]
+  }
+  #samples <- split(data, as.vector(t(samples.index)));
+
+  # reorder in order to avoid repetition
+  if (!is.null(norepetition)) {
+    ls <- lapply(ls, function(x) { order.without.repetition(x, norepetition)});
   }
 
-is.value.repeated <- function(string, value.nb) {
-  is.repeated <- FALSE
-  for (i in 1:value.nb) {
-    pat <- paste(rep(i, 3), collapse = "")
-    found <- regexpr(pattern = pat, string)
-    if (found[1] != -1) {
-      return(TRUE)
-    }
-  }
-  return(FALSE)
+  return(ls)
 }
 
-permute.without.repetition <- function(sample.df, feat1.col, feat2.col=NULL) {
-   sample.size <- nrow(sample.df)
-   feat1 <- sample.df[, feat1.col]
-   feat1.nb <- length(unique(feat1))
-   #if (feat1.nb * 2 < sample.size) stop(paste("Not enough different value in", feat1.col, "in order to avoid repetition."));
-
-    if (!is.null(feat2.col)) {
-      feat2 <- sample.df[, feat2.col]
-      feat2.nb <- length(unique(feat2))
-      #if (feat2.nb * 2 < sample.size) stop(paste("Not enough different value in", feat2.col, "in order to avoid repetition."));
-    }
+order.without.repetition <- function(sample.df, cols) {
    index.ordered.wo.repetition <- c();
+   sample.size <- nrow(sample.df)
    remaining <- 1:sample.size
    first.i <- sample(remaining, 1)
    index.ordered.wo.repetition[1] <- first.i;
    remaining <- remaining[-first.i];
    for (i in 2:sample.size) {
      previous.i <- index.ordered.wo.repetition[i-1];
-     previous.feat1 <- sample.df[previous.i, feat1.col];
-     # print("-------")
-     # print(previous.i)
-     # print(feat1)
-     # if (!is.null(feat2.col)) print(feat2)
-     # print(previous.feat1);
-     # if (!is.null(feat2.col)) print(previous.feat2);
-     # print(feat1 != previous.feat1)
-     # print(remaining);
-     possible <- intersect(which(feat1 != previous.feat1), remaining);
-     # print(possible);
-     if (!is.null(feat2.col)) {
-       previous.feat2 <- sample.df[previous.i, feat2.col];
-       possible <- intersect(possible, which(feat2 != previous.feat2))
+     possible <- remaining;
+     for(col in cols) {
+       possible <- intersect(which(sample.df[, col] != sample.df[previous.i, col]), remaining);
      }
-     if(length(possible) == 0) {
-       stop("No more logical possibility")
-     }
+     if(length(possible) == 0) stop("No more logical possibility.")
      found <- sample(possible, 1)
      index.ordered.wo.repetition[i] <- found
-     remaining <- remaining[-found];
+     remaining <- remaining[-which(remaining == found)];
    }
-   return(sample.df[index.ordered.wo.repetition,])
+   res <- sample.df[index.ordered.wo.repetition,]
+   return(res)
 }
 
 
@@ -128,7 +83,7 @@ permute.without.repetition <- function(sample.df, feat1.col, feat2.col=NULL) {
 #' @return a matrix of numerics
 #'
 #' @examples
-counterbalanced.sample.index.matrix <- function(feat1.nb, feat2.nb, sample.nb) {
+counterbalanced.sample.index.matrix <- function(data, feat1, feat2, feat1.nb, feat2.nb, sample.nb) {
 
   items.nb <- feat1.nb * feat2.nb
   sample.size <- items.nb / sample.nb;
@@ -143,7 +98,7 @@ counterbalanced.sample.index.matrix <- function(feat1.nb, feat2.nb, sample.nb) {
 
     square <- FALSE
     while (square[1]==FALSE) {
-      square <- fill.counterbalanced.sample.index.matrix(feat1.nb, feat2.nb, sample.nb)
+      square <- fill.counterbalanced.sample.index.matrix(data, feat1, feat2, feat1.nb, feat2.nb, sample.nb)
     }
     return(square)
   }
@@ -158,34 +113,48 @@ counterbalanced.sample.index.matrix <- function(feat1.nb, feat2.nb, sample.nb) {
 #' @return a matrix of numeric (sample index) or FALSE in case of a dead-end
 #'
 #' @examples
-fill.counterbalanced.sample.index.matrix <- function(feat1.nb, feat2.nb, sample.nb) {
+fill.counterbalanced.sample.index.matrix <- function(data, feat1, feat2, feat1.nb, feat2.nb, sample.nb) {
   items.nb <- feat1.nb * feat2.nb
   sample.size <- items.nb / sample.nb;
-  square <- matrix(0, nrow=feat1.nb, ncol=feat2.nb);
-  for (column in 1:feat2.nb) {
-    for (row in 1:feat1.nb) {
-      if (square[row,column] == 0 ) {
+  square <- matrix(0, nrow=sample.nb, ncol=sample.size);
 
-        not.available.in.row <- table(square[row,]) == (sample.size / feat1.nb)
-        not.available.in.row <- as.numeric(names(not.available.in.row) [not.available.in.row])
-        available.in.row <- setdiff(1:sample.nb, not.available.in.row)
-        # available.in.row <- (1:sample.nb)[! 1:sample.nb %in% square[row,]]
+  remaining <- 1:items.nb;
 
-        not.available.in.column <- table(square[,column]) == (sample.size / feat2.nb)
-        not.available.in.column <- as.numeric(names(not.available.in.column) [not.available.in.column])
-        available.in.column <- setdiff(1:sample.nb, not.available.in.column)
+  for (row in 1:sample.nb) {
+    first.i <- sample(remaining, 1)
+    square[row, 1] <- first.i;
+    remaining <- remaining[-first.i];
+    for (column in 2:sample.size) {
+      feat1.max.occ.reached.t <- table(data[square[row,1:column-1], feat1]) == (sample.size / feat1.nb)
+      feat1.max.occ.reached <- as.numeric(names(feat1.max.occ.reached.t) [feat1.max.occ.reached.t])
+      feat2.max.occ.reached.t <- table(data[square[row,1:column-1], feat2]) == (sample.size / feat2.nb)
+      feat2.max.occ.reached <- as.numeric(names(feat2.max.occ.reached.t) [feat2.max.occ.reached.t])
 
-        possible.values <- intersect(available.in.row, available.in.column)
+      not.available <- union(which(data[,feat1] %in% feat1.max.occ.reached), which(data[,feat2] %in% feat2.max.occ.reached));
+      possible.values <- setdiff(remaining, not.available);
+
         if (length(possible.values) == 0) {
+          # print(square)
+          # print(feat1.max.occ.reached)
+          # print(feat1.max.occ.reached.t)
+          # print(feat2.max.occ.reached)
+          # print(feat2.max.occ.reached.t)
+          # print(remaining)
+          # print(not.available)
+
+          cat(".")
           return(FALSE)
         }
+        i <- 0
         if (length(possible.values) > 1) {
-          square[row,column] <- sample(possible.values, 1);
+          i <- sample(possible.values, 1);
         } else {
-          square[row,column] <- possible.values
+          i <- possible.values
         }
-      }
+        square[row,column] <- i;
+      remaining <- remaining[-which(remaining == i)];
     }
   }
+  cat("\n")
   return(square)
 }
