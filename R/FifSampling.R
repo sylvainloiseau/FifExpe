@@ -45,7 +45,7 @@ counterbalanced.sampling <- function (data, feat1, feat2, sample.nb, norepetitio
   # reorder in order to avoid repetition
   if (!is.null(norepetition)) {
     reordered <- lapply(ls, function(x) { order.without.repetition(x, norepetition)});
-    while (reordered[[1]][[1]][1] == FALSE) {
+    while (reordered[[1]][[1]][1] == FALSE | reordered[[2]][[1]][1] == FALSE | reordered[[3]][[1]][1] == FALSE) {
       reordered <- lapply(ls, function(x) { order.without.repetition(x, norepetition)});
     }
   }
@@ -67,7 +67,7 @@ order.without.repetition <- function(sample.df, cols) {
        possible <- intersect(which(sample.df[, col] != sample.df[previous.i, col]), possible);
      }
      if(length(possible) == 0) {
-       cat("No more reordering possibility. Re-sampling...\n")
+       cat("No more reordering possibility. Resuming...\n")
        return(list(data.frame(FALSE)));
      }
        #stop("No more logical possibility.")
