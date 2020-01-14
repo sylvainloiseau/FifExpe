@@ -1,5 +1,5 @@
 library(testthat)
-library(FifExpe)
+library(balancedSampling)
 
 # So that R CMD Check will run tests
-test_check("FifExpe")
+test_check("balancedSampling")
