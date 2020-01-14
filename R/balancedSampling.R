@@ -1,36 +1,34 @@
-#' Divide a set of items with two categorical variables into cross-balanced samples.
+#' Divide a set of items into cross-balanced samples according to one or more qualitative variables. Each modalities
+#' of the qualitative variables are equally distributed into the sample.
 #'
-#' Items are lines of a data frame. Items have at least two categorial properties: prop1 and prop2 (columns of the data frame).
-#' The number of items is the product of the number of modalities of prop1 and prop2.
+#' Items are the lines of a data frame. Qualitative variables are columns.
 #'
-#' The sampling has the following properties:
-#'
-#' (1.) The items are exhaustively and without replacement divided into samples.
-#' (2.) The modalities of prop1 and prop2 are equally represented in each sample.
-#' (3.) Optionaly, no more than 2 consecutive identical modalities in a sample.
-#'
-#'
-#' @param data a data frame, each line is an item.
-#' @param prop1 the name of the column containing the property 1 in the data frame.
-#' @param prop2 the name of the column containing the property 2 in the data frame.
+#' @param data a data frame.
+#' The items (row) must be the cartesian product of the modalities of the qualitative variables in 'vars',
+#' or a multiple of this cartesian product.
+#' @param vars the names of the columns containing the qualitative variables to be balanced between the samples. Each modalities
+#' of each vars must be equals to the 'sample.nb', or a multiple of 'sample.nb'.
 #' @param sample.nb number of samples requested.
-#' @param maxrepetition NULL or a numeric vector giving the max allowed consecutive repetition of a modality for the two properties.
+#' @param maxrepetition NULL or a numeric vector (same length as 'vars') giving the max allowed consecutive repetition of a modality for the qualitative variables
+#' @param print.info print information to stdout.
 #' @return A list of data frame.
 #' @export
-#'
 #' @examples
 #' data(dataFif)
 #' samples <- counterbalanced.sampling(data=dataFif, "sent", "condition", 20)
-counterbalanced.sampling <- function (data, prop1, prop2, sample.nb, maxrepetition=c(2,2)) {
-  if(! prop1 %in% colnames(data)) stop(paste("Unknown column name:", prop1));
-  if(! prop2 %in% colnames(data)) stop(paste("Unknown column name:", prop2));
+balancedSampling <- function (data, vars, sample.nb, maxrepetition=c(2,2), print.info=TRUE) {
+  for(var in vars) {
+    if(! var %in% colnames(data)) stop(paste("Unknown column name: '", var, "'", sep=""));
+  }
 
   if (!is.null(maxrepetition) & !is.numeric(maxrepetition))
     stop("'maxrepetition' must be a numeric vector");
+  if (!length(maxrepetition) == length(vars))
+    stop("'maxrepetition' length must be identical to the length of 'vars'");
 
-  cat("Sampling\n")
+  if (print.info) cat("Sampling\n")
   # Assign each item to a sample with a balanced number of prop1 and prop2 in each sample
-  samples.index <- counterbalanced.sample.index.matrix(data, prop1, prop2, sample.nb);
+  samples.index <- counterbalanced.sample.index.matrix(data, vars, sample.nb, print.info);
 
   ls <- vector(mode = "list", length=sample.nb)
   for (i in 1:sample.nb) {
@@ -40,11 +38,11 @@ counterbalanced.sampling <- function (data, prop1, prop2, sample.nb, maxrepetiti
   # reorder in order to avoid repetition
   reordered <- vector(mode="list", length=sample.nb);
   if (!is.null(maxrepetition)) {
-    cat("Ordering\n")
+    if (print.info) cat("Ordering\n")
     for (i in 1:sample.nb) {
-      reordered[[i]] <- order.without.repetition(ls[[i]], c(prop1, prop2), maxrepetition);
+      reordered[[i]] <- order.without.repetition(ls[[i]], vars, maxrepetition, print.info);
     }
-    cat("\n")
+    if (print.info) cat("\n")
   } else {
     reordered <- ls
   }
@@ -63,6 +61,8 @@ counterbalanced.sampling <- function (data, prop1, prop2, sample.nb, maxrepetiti
 #' @param maxrepetition a numeric vector of the same length
 #' than 'cols' giving the the maximum consecutive identical modality allowed.
 #'
+#' @param print.info print information to stdout.
+#'
 #' @return the same data frame as 'data', with the lines reordered
 #'
 #' @export
@@ -73,17 +73,17 @@ counterbalanced.sampling <- function (data, prop1, prop2, sample.nb, maxrepetiti
 #'     B=c(rep("c", 2), rep("d", 2))
 #'   );
 #'   order.without.repetition(data, c("A", "B"), c(1,1));
-order.without.repetition <- function(data, cols, maxrepetition, maxtry=50) {
-  ntry <- 1;
+order.without.repetition <- function(data, cols, maxrepetition, maxtry=50, print.info=TRUE) {
+  ntry <- 0;
   res <- try.order.without.repetition(data, cols, maxrepetition);
   while (is.logical(res)) {
-    cat(".")
-    res <- try.order.without.repetition(data, cols, maxrepetition);
-    ntry <- ntry + 1
+    if (print.info) cat(".")
     if (ntry >= maxtry) {
-      cat("\n")
+      if (print.info) cat("\n")
       stop("the maximum number of tries has been reached")
     }
+    res <- try.order.without.repetition(data, cols, maxrepetition);
+    ntry <- ntry + 1
   }
   return(res)
 }
@@ -96,7 +96,7 @@ try.order.without.repetition <- function(data, cols, maxrepetition) {
    remaining <- 1:sample.size
 
    # the first element
-   first.i <- sample(remaining, 1)
+   first.i <- sample_consistent(remaining)
    index.ordered.wo.repetition[1] <- first.i;
    remaining <- remaining[-first.i];
 
@@ -115,12 +115,7 @@ try.order.without.repetition <- function(data, cols, maxrepetition) {
      if(length(possible) == 0) {
        return(FALSE);
      }
-     found <- 0;
-     if (length(possible) == 1) {
-       found <- possible;
-     } else {
-       found <- sample(possible, 1)
-     }
+     found <- sample_consistent(possible);
      index.ordered.wo.repetition[i] <- found
      remaining <- remaining[-which(remaining == found)];
    }
@@ -133,81 +128,107 @@ try.order.without.repetition <- function(data, cols, maxrepetition) {
 #' Create a matrix of sample index without repetition of the index in a given row,
 #' and with a balanced repetition of index in a given column.
 #'
-#' @param prop1.nb The number of row
-#' @param prop2.nb The number of column
+#' @param vars the names of the columns containing the qualitative variables to be balanced between the samples.
 #' @param sample.nb The number of sample
 #'
 #' @return a matrix of numerics
 #'
 #' @examples
-counterbalanced.sample.index.matrix <- function(data, prop1, prop2, sample.nb) {
+counterbalanced.sample.index.matrix <- function(data, vars, sample.nb, print.info, maxtry=50) {
 
-  prop1.nb <- length(unique(data[[prop1]]))
-  prop2.nb <- length(unique(data[[prop2]]))
-  items.nb <- prop1.nb * prop2.nb
+  items.nb <- nrow(data);
+  if ((items.nb %% sample.nb) != 0) stop("the number of items in the data frame is not a multiple of the requested number of samples.")
+
+  # for each variable, the number of modality
+  nb.modalities <- vector(mode = "integer", length=length(vars))
+  # for each variable, the frequency of its modalities (each modalities of a variable must have the same frequency)
+  all.frequencies <- vector(mode = "integer", length=length(vars))
+  for (i in 1:length(vars)) {
+    nb.modalities[i] <- length(unique(data[[vars[i]]]));
+    frequencies <- table(data[[vars[i]]]);
+    frequency <- frequencies[i];
+    if (! all(frequencies == frequency)) stop(paste("the modalities in variable '", vars[i], "' does not all have the same frequency.", sep=""));
+    if ((frequency %% sample.nb) != 0 ) stop(paste("the frequencies of the modalities in variable '", vars[i], "' (", frequency, ") is not a multiple of the number of samples (", sample.nb, ").", sep=""));
+    all.frequencies[i] <- frequency;
+  }
+
+  prods <- cumprod(nb.modalities);
+  cartesian.product <- prods[length(prods)];
+  if ((items.nb %% cartesian.product) != 0) stop("the number of items in the data frame is not a multiple of the product of the number of modalities of the qualitative variables")
+
+  #combination.frequencies <- array(0, dim=nb.modalities, dimnames=vars);
+  #for (i in 1:nrow(data)) {
+  #  combination.frequencies[data[i,vars]]
+  #}
+
   sample.size <- items.nb / sample.nb;
 
-  # Checking argument validity
-  if ((items.nb %% sample.size) != 0)
-    stop("The size of the requested samples is not a multiple of the number of items")
-  if ((sample.size %% prop1.nb) != 0)
-    stop("The sample size is not a multiple of the number of modality in prop1. The samples cannot be balanced.")
-  if ((sample.size %% prop2.nb) != 0)
-    stop("The sample size is not a multiple of the number of modality in prop2. The samples cannot be balanced.")
-
-    newdata <- FALSE
+  ntry <- 0;
+  newdata <- FALSE;
     while (newdata[1]==FALSE) {
-      newdata <- fill.counterbalanced.sample.index.matrix(data, prop1, prop2, prop1.nb, prop2.nb, sample.nb)
+      if (print.info) cat(".")
+      if (ntry >= maxtry) {
+        stop("the maximum number of tries has been reached")
+      }
+      newdata <- fill.counterbalanced.sample.index.matrix(data, vars, nb.modalities, all.frequencies, cartesian.product, sample.nb, sample.size)
+      ntry <- ntry + 1
     }
-    return(newdata)
-  }
+  if (print.info) cat("\n")
+  return(newdata)
+}
 
 #' [Private]
 #' Try to fill a matrix. If we ends up into a dead end, with no more
 #' logical solution, we give up and return FALSE
 #'
-#' @param prop1.nb
-#' @param prop2.nb
+#' @param vars
+#' @param nb.modalities
+#' @param nb.values
+#' @param cartesian.product
 #' @param sample.nb
+#' @param sample.size
 #'
 #' @return a matrix of numeric (sample index) or FALSE in case of a dead-end
 #'
 #' @examples
-fill.counterbalanced.sample.index.matrix <- function(data, prop1, prop2, prop1.nb, prop2.nb, sample.nb) {
-  items.nb <- prop1.nb * prop2.nb
-  sample.size <- items.nb / sample.nb;
+fill.counterbalanced.sample.index.matrix <- function(data, vars, nb.modalities, nb.values, cartesian.product, sample.nb, sample.size) {
+  items.nb <- nrow(data);
   newdata <- matrix(0, nrow=sample.nb, ncol=sample.size);
 
   remaining <- 1:items.nb;
 
   for (row in 1:sample.nb) {
-    first.i <- sample(remaining, 1)
+    first.i <- sample_consistent(remaining);
     newdata[row, 1] <- first.i;
     remaining <- remaining[-first.i];
     for (column in 2:sample.size) {
-      # TODO ugly...
-      prop1.max.occ.reached.t <- table(data[newdata[row,1:(column-1)], prop1]) == (sample.size / prop1.nb)
-      prop1.max.occ.reached <- as.numeric(names(prop1.max.occ.reached.t) [prop1.max.occ.reached.t])
-      prop2.max.occ.reached.t <- table(data[newdata[row,1:(column-1)], prop2]) == (sample.size / prop2.nb)
-      prop2.max.occ.reached <- as.numeric(names(prop2.max.occ.reached.t) [prop2.max.occ.reached.t])
-
-      not.available <- union(which(data[,prop1] %in% prop1.max.occ.reached), which(data[,prop2] %in% prop2.max.occ.reached));
+      not.available <- vector(mode="character", length=0);
+      for (i in 1:length(vars)) {
+        var <- vars[i];
+        freqs <- table(data[newdata[row,1:(column-1)], var])
+        is.max.occ.reached <- freqs == (nb.values[i] / sample.nb);
+        named.max.occ.reached <- names(is.max.occ.reached) [is.max.occ.reached];
+        not.available <- union(not.available, which(data[,vars[i]] %in% named.max.occ.reached))
+      }
       possible.values <- setdiff(remaining, not.available);
-
-        if (length(possible.values) == 0) {
-          cat(".")
-          return(FALSE)
-        }
-        i <- 0
-        if (length(possible.values) > 1) {
-          i <- sample(possible.values, 1);
-        } else {
-          i <- possible.values
-        }
-        newdata[row,column] <- i;
+      if (length(possible.values) == 0) {
+        return(FALSE)
+      }
+      i <- sample_consistent(possible.values)
+      newdata[row,column] <- i;
       remaining <- remaining[-which(remaining == i)];
     }
   }
-  cat("\n")
   return(newdata)
+}
+
+#' the base R sample function behave diffently according to the length of the first element (the set).
+sample_consistent <- function (valueset) {
+  res <- vector(mode=mode(valueset), length=1);
+  if (length(valueset) > 1) {
+    res <- sample(valueset, 1);
+  } else {
+    res <- valueset
+  }
+  return(res)
 }
