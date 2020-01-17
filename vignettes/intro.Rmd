@@ -1,0 +1,50 @@
+---
+title: "Constrained randomization with the balancedSampling package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{intro}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(balancedSampling)
+```
+
+balancedSampling helps to perform constrained randomization of a population so that the modalities of the qualitative variables are equally distributed across samples.
+
+Lets suppose you have two variables 'A' and 'B', with four and two modalities respectively. The population is a cartesian product of these two variables (or a multiple of this cartesian product), i.e. n=8:
+
+```{r}
+data <- expand.grid(A=LETTERS[1:4], B=letters[1:2])
+data
+```
+
+The frequency of the modalities are 2 (8/4) for the variable A, 4 (8/2) for variable B. There is only one partition possible, in two (since the frequency of both variables must be a multiple of the number of sample).
+
+
+```{r}
+balancedSampling(data, c("A", "B"), 2)
+```
+
+The samples can be further constrained by avoiding repetition of a modality:
+
+```{r}
+balancedSampling(data, c("A", "B"), 2, c(1,1))
+```
+
+Such partition is also available with only one variable, or more than two variables.
+
+```{r}
+data <- data.frame(A=rep(LETTERS[1:3], 6))
+data
+balancedSampling(data, "A", 3)
+```
+
