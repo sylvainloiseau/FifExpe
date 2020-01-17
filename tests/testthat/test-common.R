@@ -12,7 +12,7 @@ test_that("wrong_argument_sample.nb", {
   data <- data.frame(A=LETTERS[1:10], B=rep("un", 10), C=1:10)
   expect_error(
     balancedSampling(data, vars=c("A", "B"), sample.nb=3, maxrepetition=c(1,1), print.info=FALSE),
-    "the number of items in the data frame is not a multiple of the requested number of samples."
+    "the number of items \\(rows\\) in 'data' (.+) is not a multiple of the requested number of samples (.+)."
   );
 })
 

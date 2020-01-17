@@ -36,7 +36,9 @@ test_that("balancedSampling 1", {
     B=rep(letters[1:2], each=4)
   )
 
-  res <- balancedSampling(data, vars=c("A", "B"), sample.nb=2)
+  res <- balancedSampling(data, vars=c("A", "B"), sample.nb=2, c(2,2))
+
+  expect_equal(length(res), 2);
 
   sample1.A <- table(res[[1]][,"A"])
   expect_true(all(sample1.A == 1))
@@ -54,6 +56,7 @@ test_that("balancedSampling 1", {
 test_that("balancedSampling 2", {
   data <- expand.grid(A=factor(as.character(1:60)), B=factor(letters[1:3]));
   res <- balancedSampling(data, c("A", "B"), 3);
+  expect_equal(length(res), 3)
 })
 
 

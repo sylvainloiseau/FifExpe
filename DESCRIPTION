@@ -1,6 +1,6 @@
 Package: balancedSampling
 Type: Package
-Title: Cross-balanced samples according to one or more qualitative variable
+Title: Cross-balanced sampling according to one or more qualitative variables
 Version: 0.1.0
 Authors@R: 
     person(given = "Sylvain",
@@ -9,12 +9,14 @@ Authors@R:
            email = "sylvain.loiseau@univ-paris13.fr",
            comment = c(ORCID = "https://orcid.org/0000-0001-5249-9550"))
 Maintainer: Sylvain Loiseau <sylvain.loiseau@univ-paris13.fr>
-Description: Cross balanced sampling is a constrained randomization: a
-partition of a population into several samples so that each modality of one or
-several qualitative variables is equaly distributed across the samples.
-License: BSD 3-Clause License
+Description: This package helps partitioning a population into several samples where in which each modality of one or several qualitative variables are equaly distributed; the sample can be further reordered according to a constrained randomization scheme avoiding repetition of modalities.
+License: BSD 3-clause License + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.1.1
 Suggests: 
-    testthat (>= 2.1.0), ellipsis
+    testthat (>= 2.1.0),
+    ellipsis,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

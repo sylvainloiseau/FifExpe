@@ -9,7 +9,9 @@
 #' @param maxrepetition a numeric vector of the same length
 #' than 'cols' giving the the maximum consecutive identical modality allowed.
 #'
-#' @param print.info print information to stdout.
+#' @param maxtry maximum number of tries
+#'
+#'@param print.info print information to stdout.
 #'
 #' @return the same data frame as 'data', with the lines reordered
 #'
@@ -21,7 +23,7 @@
 #'     B=c(rep("c", 2), rep("d", 2))
 #'   );
 #'   order.without.repetition(data, c("A", "B"), c(1,1));
-order.without.repetition <- function(data, cols, maxrepetition, maxtry=10, print.info=TRUE) {
+order.without.repetition <- function(data, cols, maxrepetition, maxtry=100, print.info=TRUE) {
   if (length(cols) != length(maxrepetition)) stop("'cols' and 'maxrepetition' length must match.")
   ntry <- 0;
   res <- try.order.without.repetition(data, cols, maxrepetition);
@@ -38,6 +40,11 @@ order.without.repetition <- function(data, cols, maxrepetition, maxtry=10, print
 }
 
 #' [Private]
+#'
+#' @param data the data frame
+#' @param cols the qualitative variables
+#' @param maxrepetition numeric vector of length 1: maximum number of consecutive identical value for each variable in the sample
+#' #'
 try.order.without.repetition <- function(data, cols, maxrepetition) {
   index.ordered.wo.repetition <- c();
   sample.size <- nrow(data)
@@ -69,5 +76,16 @@ try.order.without.repetition <- function(data, cols, maxrepetition) {
   }
   if (length(index.ordered.wo.repetition) != sample.size) stop("The ordering index does not fit the length of the data.")
   res <- data[index.ordered.wo.repetition,]
+  return(res)
+}
+
+is.permutable.without.repetition <- function(f, maxrepetition=1) {
+  m <- max(table(f));
+  len <- length(f)
+  #len <- ifelse(length(f) %% 2 ==0, length(f), length(f)-1)
+  res <- FALSE;
+  if (len ) {
+  res <- m < ceiling((maxrepetition/(maxrepetition+1))*len) + maxrepetition
+  }
   return(res)
 }

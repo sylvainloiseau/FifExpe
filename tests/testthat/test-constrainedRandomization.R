@@ -10,7 +10,7 @@ test_that("permute.without.repetition2", {
   data <- data.frame(A=LETTERS[1:10], B=rep("un", 10), C=1:10)
   expect_error(
     order.without.repetition(data, c("A", "B"), c(1,1)),
-    "the maximum number of tries has been reached"
+    "the maximum number of tries (.+) has been reached"
   );
 })
 
