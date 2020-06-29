@@ -1,4 +1,4 @@
-# balancedSampling -- partition a population preserving the structure of qualitative variables
+# balancedSampling -- sampling according to the frequencies of qualitative variables
 
 **Author:** Sylvain Loiseau<br/>
 **License:** [BSD_3_clause](https://opensource.org/licenses/BSD-3-Clause)
