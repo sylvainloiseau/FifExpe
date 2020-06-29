@@ -9,7 +9,7 @@ Authors@R:
            email = "sylvain.loiseau@univ-paris13.fr",
            comment = c(ORCID = "https://orcid.org/0000-0001-5249-9550"))
 Maintainer: Sylvain Loiseau <sylvain.loiseau@univ-paris13.fr>
-Description: This package helps partitioning a population into several samples where each modality of one or several qualitative variables are equaly distributed; the samples can be further reordered according to a constrained randomization scheme avoiding repetition of modalities.
+Description: This package helps partitioning a population into several samples into which each modality of one or several qualitative variables are equaly frequent; the randomization can be constrained further according to maximum allowed numbers of consecutive occurrences of the modalities.
 License: BSD 3-clause License + file LICENSE
 Encoding: UTF-8
 LazyData: true
