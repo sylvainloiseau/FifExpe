@@ -34,7 +34,7 @@ balancedSampling <- function (data, vars, sample.nb, maxrepetition=NULL, print.i
 
   ls <- vector(mode = "list", length=sample.nb)
   for (i in 1:sample.nb) {
-    ls[[i]] <- data[samples.index[i,],]
+    ls[[i]] <- data[samples.index[i,],,drop=FALSE]
   }
 
   # reorder in order to avoid repetition
@@ -154,9 +154,9 @@ try.counterbalanced.sample.index.matrix <- function(data, vars, nb.modalities, n
 }
 
 #' [private]
-#' Randomly drown one element from a vector of one or more elements.
+#' Randomly draw one element from a vector of one or more elements.
 #'
-#' the base R sample function behave diffently according to the length of the first element (the set).
+#' the base R sample function behave diffently according to the length of the first element: if it is a length-1 numeric vector, it is interpreted as the size of the urn, not as the only element to draw.
 #'
 #' @param valueset set of elements
 #'
