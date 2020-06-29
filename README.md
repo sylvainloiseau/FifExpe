@@ -11,5 +11,5 @@ devtools::install_github("sylvainloiseau/balancedSampling",  build_vignettes=TRU
 
 ```
 
-This package helps partitioning a population into several samples into which each modality of one or several qualitative variables are equaly frequent; the randomization can be constrained further according to maximum allowed numbers of consecutive occurrences of the modalities.
+This package helps partitioning a population into several samples into which each modality of one or several qualitative variables are equally frequent; the randomization can be constrained further according to maximum allowed numbers of consecutive occurrences of the modalities.
 
